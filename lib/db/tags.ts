@@ -1,7 +1,6 @@
 import { db } from "./db";
 import type { TagRow } from "./schema";
-
-const DEFAULT_TAG_COLOR = "#000000";
+import { DEFAULT_TAG_COLOR } from "@/lib/tags/constants";
 
 function nowISO() {
   return new Date().toISOString();

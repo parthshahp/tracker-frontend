@@ -19,6 +19,7 @@ import {
   stopLatestRunningTimer,
 } from "@/lib/db/timeEntries";
 import { createTag, getAllTags } from "@/lib/db/tags";
+import { DEFAULT_TAG_COLOR } from "@/lib/tags/constants";
 
 function formatDuration(totalSeconds: number) {
   const clamped = Math.max(0, totalSeconds);
@@ -41,6 +42,7 @@ export default function Page() {
       (tags ?? []).map((tag) => ({
         label: tag.name,
         value: tag.id,
+        color: tag.color ?? DEFAULT_TAG_COLOR,
       })),
     [tags],
   );
@@ -50,7 +52,11 @@ export default function Page() {
   const handleCreateTag = useCallback(async (label: string) => {
     try {
       const created = await createTag(label);
-      return { label: created.name, value: created.id };
+      return {
+        label: created.name,
+        value: created.id,
+        color: created.color ?? DEFAULT_TAG_COLOR,
+      };
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Failed to create tag";
@@ -70,7 +76,7 @@ export default function Page() {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [runningEntry?.id]);
+  }, [runningEntry]);
 
   const elapsedSeconds = useMemo(() => {
     if (!runningEntry) return 0;
@@ -100,15 +106,13 @@ export default function Page() {
         <CardHeader>
           <CardTitle>Local timer & tags</CardTitle>
           <CardDescription>
-            Start a timer to create a local time entry and tag it whenever you&apos;re ready.
+            Start a timer to create a local time entry and tag it whenever
+            you&apos;re ready.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="flex flex-col gap-3 rounded-lg border border-border/60 bg-muted/40 p-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-sm text-muted-foreground">
-                {runningEntry ? "Timer running" : "No active timer"}
-              </p>
               <p className="font-mono text-3xl font-semibold tracking-tight">
                 {formatDuration(elapsedSeconds)}
               </p>

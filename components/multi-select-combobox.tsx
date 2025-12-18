@@ -14,10 +14,12 @@ import {
   ComboboxValue,
   useComboboxAnchor,
 } from "@/components/ui/combobox";
+import { TagColorDot } from "@/components/tag-color-dot";
 
 export type MultiSelectOption = {
   label: string;
   value: string;
+  color?: string | null;
   isCreateOption?: boolean;
   createLabel?: string;
 };
@@ -154,7 +156,10 @@ export function MultiSelectCombobox({
                 key={option.value}
                 className="bg-secondary text-secondary-foreground border border-secondary/40 px-2 py-0.5"
               >
-                {option.label}
+                <span className="flex items-center gap-1.5">
+                  <TagColorDot color={option.color} />
+                  <span>{option.label}</span>
+                </span>
               </ComboboxChip>
             ));
           }}
@@ -170,7 +175,8 @@ export function MultiSelectCombobox({
         <ComboboxList>
           {(item) => (
             <ComboboxItem key={item.value} value={item}>
-              {item.label}
+              <TagColorDot color={item.color} />
+              <span className="truncate">{item.label}</span>
             </ComboboxItem>
           )}
         </ComboboxList>
