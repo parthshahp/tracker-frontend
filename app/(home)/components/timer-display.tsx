@@ -36,7 +36,7 @@ export function TimerDisplay({
         </p>
       </div>
       <Button onClick={onToggle} disabled={isToggling} size="lg">
-        {isRunning ? "Stop timer" : "Start timer"}
+        {isRunning ? "Stop" : "Start"}
       </Button>
     </div>
   );
