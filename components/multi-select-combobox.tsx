@@ -1,6 +1,6 @@
 "use client";
 
-import * as React from "react";
+import { useEffect, useMemo, useState, useRef, useCallback } from "react";
 import { PlusIcon } from "lucide-react";
 
 import {
@@ -47,29 +47,31 @@ export function MultiSelectCombobox({
   onCreateOption,
 }: MultiSelectComboboxProps) {
   const anchorRef = useComboboxAnchor();
-  const [internalValues, setInternalValues] = React.useState<MultiSelectOption[]>([]);
+  const [internalValues, setInternalValues] = useState<MultiSelectOption[]>([]);
   const isControlled = value !== undefined;
-  const selectedValues = React.useMemo(
-    () => (isControlled ? value ?? [] : internalValues),
-    [internalValues, isControlled, value],
+  const derivedInternalValues = useMemo(() => {
+    return internalValues
+      .map((selected) => {
+        const updated = options.find(
+          (option) => option.value === selected.value,
+        );
+        return updated ?? selected;
+      })
+      .filter((option) =>
+        options.some((candidate) => candidate.value === option.value),
+      );
+  }, [internalValues, options]);
+  const selectedValues = useMemo(
+    () => (isControlled ? (value ?? []) : derivedInternalValues),
+    [derivedInternalValues, isControlled, value],
   );
-  const selectedValuesRef = React.useRef<MultiSelectOption[]>(selectedValues);
-  React.useEffect(() => {
+  const selectedValuesRef = useRef<MultiSelectOption[]>(selectedValues);
+  useEffect(() => {
     selectedValuesRef.current = selectedValues;
   }, [selectedValues]);
-  const [searchQuery, setSearchQuery] = React.useState("");
+  const [searchQuery, setSearchQuery] = useState("");
 
-  React.useEffect(() => {
-    if (isControlled) return;
-    setInternalValues((current) =>
-      current.map((selected) => {
-        const updated = options.find((option) => option.value === selected.value);
-        return updated ?? selected;
-      }),
-    );
-  }, [options, isControlled]);
-
-  const updateSelection = React.useCallback(
+  const updateSelection = useCallback(
     (next: MultiSelectOption[]) => {
       if (!isControlled) {
         setInternalValues(next);
@@ -79,7 +81,7 @@ export function MultiSelectCombobox({
     [isControlled, onChange],
   );
 
-  const applySelection = React.useCallback(
+  const applySelection = useCallback(
     (updater: (prev: MultiSelectOption[]) => MultiSelectOption[]) => {
       const next = updater(selectedValuesRef.current);
       updateSelection(next);
@@ -87,20 +89,24 @@ export function MultiSelectCombobox({
     [updateSelection],
   );
 
-  const handleValueChange = React.useCallback(
+  const handleValueChange = useCallback(
     (nextValue: MultiSelectOption[] | null) => {
       const normalized = Array.isArray(nextValue) ? nextValue : [];
-      const createCandidate = normalized.find((option) => option.isCreateOption);
+      const createCandidate = normalized.find(
+        (option) => option.isCreateOption,
+      );
 
       if (createCandidate && onCreateOption) {
-        const remaining = normalized.filter((option) => option !== createCandidate);
+        const remaining = normalized.filter(
+          (option) => option !== createCandidate,
+        );
         updateSelection(remaining);
         setSearchQuery("");
 
         const labelToCreate = createCandidate.createLabel ?? searchQuery.trim();
 
         if (labelToCreate) {
-          void (async () => {
+          (async () => {
             try {
               const createdOption = await onCreateOption(labelToCreate);
               if (!createdOption) {
@@ -108,7 +114,9 @@ export function MultiSelectCombobox({
               }
 
               applySelection((prev) => [
-                ...prev.filter((option) => option.value !== createdOption.value),
+                ...prev.filter(
+                  (option) => option.value !== createdOption.value,
+                ),
                 createdOption,
               ]);
             } catch (error) {
@@ -126,10 +134,11 @@ export function MultiSelectCombobox({
     [applySelection, onCreateOption, searchQuery, updateSelection],
   );
 
-  const derivedItems = React.useMemo(() => {
+  const derivedItems = useMemo(() => {
     const trimmedQuery = searchQuery.trim();
     const baseOptions = options.filter(
-      (option) => !selectedValues.some((selected) => selected.value === option.value),
+      (option) =>
+        !selectedValues.some((selected) => selected.value === option.value),
     );
 
     if (trimmedQuery && onCreateOption) {
