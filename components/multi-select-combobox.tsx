@@ -31,6 +31,7 @@ interface MultiSelectComboboxProps {
   placeholder?: string;
   emptyText?: string;
   options: MultiSelectOption[];
+  value?: MultiSelectOption[];
   onChange?: (values: MultiSelectOption[]) => void;
   onCreateOption?: (label: string) => Promise<MultiSelectOption | null | void>;
 }
@@ -41,23 +42,50 @@ export function MultiSelectCombobox({
   placeholder = "Search options",
   emptyText = "No matches found",
   options,
+  value,
   onChange,
   onCreateOption,
 }: MultiSelectComboboxProps) {
   const anchorRef = useComboboxAnchor();
-  const [selectedValues, setSelectedValues] = React.useState<
-    MultiSelectOption[]
-  >([]);
+  const [internalValues, setInternalValues] = React.useState<MultiSelectOption[]>([]);
+  const isControlled = value !== undefined;
+  const selectedValues = React.useMemo(
+    () => (isControlled ? value ?? [] : internalValues),
+    [internalValues, isControlled, value],
+  );
+  const selectedValuesRef = React.useRef<MultiSelectOption[]>(selectedValues);
+  React.useEffect(() => {
+    selectedValuesRef.current = selectedValues;
+  }, [selectedValues]);
   const [searchQuery, setSearchQuery] = React.useState("");
 
   React.useEffect(() => {
-    setSelectedValues((current) =>
+    if (isControlled) return;
+    setInternalValues((current) =>
       current.map((selected) => {
         const updated = options.find((option) => option.value === selected.value);
         return updated ?? selected;
       }),
     );
-  }, [options]);
+  }, [options, isControlled]);
+
+  const updateSelection = React.useCallback(
+    (next: MultiSelectOption[]) => {
+      if (!isControlled) {
+        setInternalValues(next);
+      }
+      onChange?.(next);
+    },
+    [isControlled, onChange],
+  );
+
+  const applySelection = React.useCallback(
+    (updater: (prev: MultiSelectOption[]) => MultiSelectOption[]) => {
+      const next = updater(selectedValuesRef.current);
+      updateSelection(next);
+    },
+    [updateSelection],
+  );
 
   const handleValueChange = React.useCallback(
     (nextValue: MultiSelectOption[] | null) => {
@@ -66,8 +94,7 @@ export function MultiSelectCombobox({
 
       if (createCandidate && onCreateOption) {
         const remaining = normalized.filter((option) => option !== createCandidate);
-        setSelectedValues(remaining);
-        onChange?.(remaining);
+        updateSelection(remaining);
         setSearchQuery("");
 
         const labelToCreate = createCandidate.createLabel ?? searchQuery.trim();
@@ -80,14 +107,10 @@ export function MultiSelectCombobox({
                 return;
               }
 
-              setSelectedValues((prev) => {
-                const next = [
-                  ...prev.filter((option) => option.value !== createdOption.value),
-                  createdOption,
-                ];
-                onChange?.(next);
-                return next;
-              });
+              applySelection((prev) => [
+                ...prev.filter((option) => option.value !== createdOption.value),
+                createdOption,
+              ]);
             } catch (error) {
               console.error("Failed to create option", error);
             }
@@ -97,11 +120,10 @@ export function MultiSelectCombobox({
         return;
       }
 
-      setSelectedValues(normalized);
-      onChange?.(normalized);
+      updateSelection(normalized);
       setSearchQuery("");
     },
-    [onChange, onCreateOption, searchQuery],
+    [applySelection, onCreateOption, searchQuery, updateSelection],
   );
 
   const derivedItems = React.useMemo(() => {

@@ -1,15 +1,15 @@
 import { db } from "./db";
 import type { TimeEntryRow } from "./schema";
+import { setTagsForTimeEntry } from "./timeEntryTags";
 
 function nowISO() {
   return new Date().toISOString();
 }
 
-export async function startTimer() {
+export async function startTimer(tagIds: string[] = []) {
   const timestamp = nowISO();
   const row: TimeEntryRow = {
     id: crypto.randomUUID(),
-    userId: null,
     startAt: timestamp,
     endAt: null,
     isDeleted: 0,
@@ -19,10 +19,11 @@ export async function startTimer() {
   };
 
   await db.timeEntries.add(row);
+  await setTagsForTimeEntry(row.id, tagIds);
   return row;
 }
 
-export async function stopLatestRunningTimer() {
+export async function stopLatestRunningTimer(tagIds?: string[]) {
   const running = await getLatestRunningTimeEntry();
   if (!running) return null;
 
@@ -31,6 +32,9 @@ export async function stopLatestRunningTimer() {
     endAt: endTimestamp,
     updatedAtClient: endTimestamp,
   });
+  if (typeof tagIds !== "undefined") {
+    await setTagsForTimeEntry(running.id, tagIds);
+  }
 
   return { ...running, endAt: endTimestamp };
 }

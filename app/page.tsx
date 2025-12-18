@@ -21,6 +21,10 @@ import {
   stopLatestRunningTimer,
 } from "@/lib/db/timeEntries";
 import { createTag, getAllTags } from "@/lib/db/tags";
+import {
+  getTagsForTimeEntry,
+  setTagsForTimeEntry,
+} from "@/lib/db/timeEntryTags";
 import { DEFAULT_TAG_COLOR } from "@/lib/tags/constants";
 
 function formatDuration(totalSeconds: number) {
@@ -39,6 +43,8 @@ function formatDuration(totalSeconds: number) {
 export default function Page() {
   const runningEntry = useLiveQuery(getLatestRunningTimeEntry, [], null);
   const tags = useLiveQuery(getAllTags, [], []);
+  const runningEntryId = runningEntry?.id ?? null;
+  const [selectedTags, setSelectedTags] = useState<MultiSelectOption[]>([]);
   const [createDialogState, setCreateDialogState] = useState<{
     dialogKey: string;
     defaultName: string;
@@ -55,6 +61,43 @@ export default function Page() {
   );
   const [now, setNow] = useState(() => Date.now());
   const [isToggling, setIsToggling] = useState(false);
+
+  useEffect(() => {
+    setSelectedTags((current) =>
+      current
+        .map((selected) => {
+          const updated = tagOptions.find((option) => option.value === selected.value);
+          return updated ?? selected;
+        })
+        .filter((option) =>
+          tagOptions.some((candidate) => candidate.value === option.value),
+        ),
+    );
+  }, [tagOptions]);
+
+  useEffect(() => {
+    if (!runningEntryId) {
+      return;
+    }
+
+    let isCancelled = false;
+    const hydrate = async () => {
+      const rows = await getTagsForTimeEntry(runningEntryId);
+      if (isCancelled) return;
+      const next = rows.map((tag) => ({
+        label: tag.name,
+        value: tag.id,
+        color: tag.color ?? DEFAULT_TAG_COLOR,
+      }));
+      setSelectedTags(next);
+    };
+
+    void hydrate();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [runningEntryId]);
 
   const handleCreateTag = useCallback((label: string) => {
     const normalizedLabel = label.trim();
@@ -105,6 +148,20 @@ export default function Page() {
     [createDialogState],
   );
 
+  const handleTagSelectionChange = useCallback(
+    (next: MultiSelectOption[]) => {
+      setSelectedTags(next);
+      if (!runningEntryId) {
+        return;
+      }
+      const tagIds = next.map((tag) => tag.value);
+      void setTagsForTimeEntry(runningEntryId, tagIds).catch((error) => {
+        console.error("Failed to update running entry tags", error);
+      });
+    },
+    [runningEntryId],
+  );
+
   useEffect(() => {
     if (!runningEntry) {
       setNow(Date.now());
@@ -129,16 +186,17 @@ export default function Page() {
 
     setIsToggling(true);
     try {
+      const tagIds = selectedTags.map((tag) => tag.value);
       if (runningEntry) {
-        await stopLatestRunningTimer();
+        await stopLatestRunningTimer(tagIds);
       } else {
-        await startTimer();
+        await startTimer(tagIds);
       }
       setNow(Date.now());
     } finally {
       setIsToggling(false);
     }
-  }, [isToggling, runningEntry]);
+  }, [isToggling, runningEntry, selectedTags]);
 
   return (
     <>
@@ -168,6 +226,8 @@ export default function Page() {
               name="tag-selector"
               placeholder="Search tags"
               options={tagOptions}
+              value={selectedTags}
+              onChange={handleTagSelectionChange}
               onCreateOption={handleCreateTag}
             />
           </CardContent>

@@ -24,10 +24,8 @@ export async function createTag(name: string, color?: string | null) {
   const timestamp = nowISO();
   const row: TagRow = {
     id: crypto.randomUUID(),
-    userId: null,
     name: normalizedName,
     color: color?.trim() || DEFAULT_TAG_COLOR,
-    isDeleted: 0,
     createdAt: timestamp,
     updatedAtClient: timestamp,
     updatedAtServer: null,
