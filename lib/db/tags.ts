@@ -10,7 +10,7 @@ export function getAllTags() {
   return db.tags.orderBy("name").toArray();
 }
 
-export async function createTag(name: string) {
+export async function createTag(name: string, color?: string | null) {
   const normalizedName = name.trim();
   if (!normalizedName) {
     throw new Error("Tag name cannot be empty");
@@ -26,7 +26,7 @@ export async function createTag(name: string) {
     id: crypto.randomUUID(),
     userId: null,
     name: normalizedName,
-    color: DEFAULT_TAG_COLOR,
+    color: color?.trim() || DEFAULT_TAG_COLOR,
     isDeleted: 0,
     createdAt: timestamp,
     updatedAtClient: timestamp,

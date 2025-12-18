@@ -5,6 +5,8 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { toast } from "sonner";
 
 import { MultiSelectCombobox } from "@/components/multi-select-combobox";
+import type { MultiSelectOption } from "@/components/multi-select-combobox";
+import { CreateTagDialog } from "@/components/create-tag-dialog";
 import {
   Card,
   CardContent,
@@ -37,6 +39,11 @@ function formatDuration(totalSeconds: number) {
 export default function Page() {
   const runningEntry = useLiveQuery(getLatestRunningTimeEntry, [], null);
   const tags = useLiveQuery(getAllTags, [], []);
+  const [createDialogState, setCreateDialogState] = useState<{
+    dialogKey: string;
+    defaultName: string;
+    resolve: (value: MultiSelectOption | null) => void;
+  } | null>(null);
   const tagOptions = useMemo(
     () =>
       (tags ?? []).map((tag) => ({
@@ -49,21 +56,54 @@ export default function Page() {
   const [now, setNow] = useState(() => Date.now());
   const [isToggling, setIsToggling] = useState(false);
 
-  const handleCreateTag = useCallback(async (label: string) => {
-    try {
-      const created = await createTag(label);
-      return {
-        label: created.name,
-        value: created.id,
-        color: created.color ?? DEFAULT_TAG_COLOR,
-      };
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to create tag";
-      toast.error(message);
-      return null;
-    }
+  const handleCreateTag = useCallback((label: string) => {
+    const normalizedLabel = label.trim();
+    return new Promise<MultiSelectOption | null>((resolve) => {
+      setCreateDialogState((current) => {
+        current?.resolve(null);
+        return {
+          dialogKey: crypto.randomUUID(),
+          defaultName: normalizedLabel || label,
+          resolve,
+        };
+      });
+    });
   }, []);
+
+  const handleDialogDismiss = useCallback(() => {
+    setCreateDialogState((current) => {
+      if (!current) {
+        return null;
+      }
+      current.resolve(null);
+      return null;
+    });
+  }, []);
+
+  const handleDialogSubmit = useCallback(
+    async ({ name, color }: { name: string; color: string }) => {
+      if (!createDialogState) {
+        return;
+      }
+
+      try {
+        const created = await createTag(name, color);
+        const option: MultiSelectOption = {
+          label: created.name,
+          value: created.id,
+          color: created.color ?? DEFAULT_TAG_COLOR,
+        };
+        createDialogState.resolve(option);
+        setCreateDialogState(null);
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Failed to create tag";
+        toast.error(message);
+        throw error;
+      }
+    },
+    [createDialogState],
+  );
 
   useEffect(() => {
     if (!runningEntry) {
@@ -101,36 +141,48 @@ export default function Page() {
   }, [isToggling, runningEntry]);
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-background p-6">
-      <Card className="w-full max-w-xl">
-        <CardHeader>
-          <CardTitle>Local timer & tags</CardTitle>
-          <CardDescription>
-            Start a timer to create a local time entry and tag it whenever
-            you&apos;re ready.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="flex flex-col gap-3 rounded-lg border border-border/60 bg-muted/40 p-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="font-mono text-3xl font-semibold tracking-tight">
-                {formatDuration(elapsedSeconds)}
-              </p>
+    <>
+      <main className="flex min-h-screen items-center justify-center bg-background p-6">
+        <Card className="w-full max-w-xl">
+          <CardHeader>
+            <CardTitle>Local timer & tags</CardTitle>
+            <CardDescription>
+              Start a timer to create a local time entry and tag it whenever
+              you&apos;re ready.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="flex flex-col gap-3 rounded-lg border border-border/60 bg-muted/40 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="font-mono text-3xl font-semibold tracking-tight">
+                  {formatDuration(elapsedSeconds)}
+                </p>
+              </div>
+              <Button onClick={handleToggleTimer} disabled={isToggling} size="lg">
+                {runningEntry ? "Stop timer" : "Start timer"}
+              </Button>
             </div>
-            <Button onClick={handleToggleTimer} disabled={isToggling} size="lg">
-              {runningEntry ? "Stop timer" : "Start timer"}
-            </Button>
-          </div>
 
-          <MultiSelectCombobox
-            id="tag-selector"
-            name="tag-selector"
-            placeholder="Search tags"
-            options={tagOptions}
-            onCreateOption={handleCreateTag}
-          />
-        </CardContent>
-      </Card>
-    </main>
+            <MultiSelectCombobox
+              id="tag-selector"
+              name="tag-selector"
+              placeholder="Search tags"
+              options={tagOptions}
+              onCreateOption={handleCreateTag}
+            />
+          </CardContent>
+        </Card>
+      </main>
+
+      {createDialogState ? (
+        <CreateTagDialog
+          key={createDialogState.dialogKey}
+          open
+          defaultName={createDialogState.defaultName}
+          onDismiss={handleDialogDismiss}
+          onSubmit={handleDialogSubmit}
+        />
+      ) : null}
+    </>
   );
 }

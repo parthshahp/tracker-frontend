@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { PlusIcon } from "lucide-react";
 
 import {
   Combobox,
@@ -175,8 +176,17 @@ export function MultiSelectCombobox({
         <ComboboxList>
           {(item) => (
             <ComboboxItem key={item.value} value={item}>
-              <TagColorDot color={item.color} />
-              <span className="truncate">{item.label}</span>
+              {item.isCreateOption ? (
+                <>
+                  <PlusIcon className="h-4 w-4 text-muted-foreground" />
+                  <span className="truncate">{item.label}</span>
+                </>
+              ) : (
+                <>
+                  <TagColorDot color={item.color} />
+                  <span className="truncate">{item.label}</span>
+                </>
+              )}
             </ComboboxItem>
           )}
         </ComboboxList>
