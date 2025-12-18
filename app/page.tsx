@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
+import { toast } from "sonner";
 
 import { MultiSelectCombobox } from "@/components/multi-select-combobox";
 import {
@@ -47,8 +48,15 @@ export default function Page() {
   const [isToggling, setIsToggling] = useState(false);
 
   const handleCreateTag = useCallback(async (label: string) => {
-    const created = await createTag(label);
-    return { label: created.name, value: created.id };
+    try {
+      const created = await createTag(label);
+      return { label: created.name, value: created.id };
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to create tag";
+      toast.error(message);
+      return null;
+    }
   }, []);
 
   useEffect(() => {

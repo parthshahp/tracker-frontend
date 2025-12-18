@@ -19,7 +19,7 @@ export async function createTag(name: string) {
 
   const existing = await db.tags.where("name").equals(normalizedName).first();
   if (existing) {
-    return existing;
+    throw new Error(`Tag "${normalizedName}" already exists`);
   }
 
   const timestamp = nowISO();
@@ -41,10 +41,7 @@ export async function createTag(name: string) {
     const message =
       error instanceof Error ? error.message.toLowerCase() : String(error);
     if (message.includes("constraint") || message.includes("unique")) {
-      const duplicate = await db.tags.where("name").equals(normalizedName).first();
-      if (duplicate) {
-        return duplicate;
-      }
+      throw new Error(`Tag "${normalizedName}" already exists`);
     }
     throw error;
   }
