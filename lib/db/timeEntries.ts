@@ -45,3 +45,22 @@ export function getLatestRunningTimeEntry() {
     .filter((entry) => entry.endAt === null)
     .last();
 }
+
+export function getCompletedTimeEntries() {
+  return db.timeEntries
+    .orderBy("endAt")
+    .filter((entry) => entry.endAt !== null && entry.isDeleted === 0)
+    .reverse()
+    .toArray();
+}
+
+export async function deleteTimeEntry(timeEntryId: string) {
+  const timestamp = nowISO();
+  await db.transaction("rw", db.timeEntries, db.timeEntryTags, async () => {
+    await db.timeEntries.update(timeEntryId, {
+      isDeleted: 1,
+      updatedAtClient: timestamp,
+    });
+    await db.timeEntryTags.where("timeEntryId").equals(timeEntryId).delete();
+  });
+}
