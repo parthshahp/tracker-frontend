@@ -40,7 +40,7 @@ export function MultiSelectCombobox({
   id,
   name,
   placeholder = "Search options",
-  emptyText = "No matches found",
+  emptyText = "Start typing to add a tag",
   options,
   value,
   onChange,

@@ -18,23 +18,6 @@ function formatTime(iso: string) {
   });
 }
 
-function formatDateRange(startIso: string, endIso: string) {
-  const startDate = new Date(startIso);
-  const endDate = new Date(endIso);
-  const startDateText = startDate.toLocaleDateString(undefined, {
-    dateStyle: "medium",
-  });
-  const endDateText = endDate.toLocaleDateString(undefined, {
-    dateStyle: "medium",
-  });
-
-  if (startDateText === endDateText) {
-    return startDateText;
-  }
-
-  return `${startDateText} – ${endDateText}`;
-}
-
 function formatDuration(startAt: string, endAt: string) {
   const start = new Date(startAt).getTime();
   const end = new Date(endAt).getTime();
@@ -91,47 +74,43 @@ export function CompletedTimeEntries() {
             className="rounded-lg border bg-card p-4 shadow-sm"
             role="article"
           >
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="space-y-1">
-                <p className="text-sm font-medium">
+            <div className="flex flex-wrap items-center gap-3 text-sm">
+              <div className="flex flex-1 flex-wrap gap-2">
+                {entry.tags.length
+                  ? entry.tags.map((tag) => (
+                      <Badge
+                        key={tag.id}
+                        variant="secondary"
+                        style={{
+                          backgroundColor: tag.color ?? DEFAULT_TAG_COLOR,
+                          color: "white",
+                        }}
+                      >
+                        {tag.name}
+                      </Badge>
+                    ))
+                  : (
+                    <span className="text-xs text-muted-foreground">No tags</span>
+                  )}
+              </div>
+              <div className="ml-auto flex flex-wrap items-center gap-3 text-right">
+                <p className="text-xs text-muted-foreground">
                   {formatTime(entry.startAt)} – {formatTime(entry.endAt)}
                 </p>
-                <p className="text-xs text-muted-foreground">
-                  {formatDateRange(entry.startAt, entry.endAt)}
-                </p>
-              </div>
-              <div className="flex items-center gap-2 text-sm font-semibold tabular-nums text-right">
-                <span>{formatDuration(entry.startAt, entry.endAt)}</span>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-xs"
-                  className="text-muted-foreground hover:text-destructive"
-                  aria-label="Delete time entry"
-                  onClick={() => handleDelete(entry.id)}
-                >
-                  <Trash2 className="size-4" aria-hidden="true" />
-                </Button>
-              </div>
-            </div>
-
-            <div className="mt-3 flex flex-wrap gap-2">
-              {entry.tags.length ? (
-                entry.tags.map((tag) => (
-                  <Badge
-                    key={tag.id}
-                    variant="secondary"
-                    style={{
-                      backgroundColor: tag.color ?? DEFAULT_TAG_COLOR,
-                      color: "white",
-                    }}
+                <div className="flex items-center gap-2 font-semibold tabular-nums">
+                  <span>{formatDuration(entry.startAt, entry.endAt)}</span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-xs"
+                    className="text-muted-foreground hover:text-destructive"
+                    aria-label="Delete time entry"
+                    onClick={() => handleDelete(entry.id)}
                   >
-                    {tag.name}
-                  </Badge>
-                ))
-              ) : (
-                <span className="text-xs text-muted-foreground">No tags</span>
-              )}
+                    <Trash2 className="size-4" aria-hidden="true" />
+                  </Button>
+                </div>
+              </div>
             </div>
           </div>
         ))}
@@ -140,7 +119,7 @@ export function CompletedTimeEntries() {
   }, [entries, handleDelete]);
 
   return (
-    <Card className="w-full max-w-md">
+    <Card className="w-full max-w-lg">
       <CardHeader>
         <CardTitle>Completed time entries</CardTitle>
       </CardHeader>

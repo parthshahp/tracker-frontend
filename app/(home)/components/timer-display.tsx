@@ -28,6 +28,7 @@ export function TimerDisplay({
   isToggling,
   onToggle,
 }: TimerDisplayProps) {
+  const buttonVariant = isRunning ? "destructive" : "default";
   return (
     <div className="flex flex-col gap-3 rounded-lg border border-border/60 bg-muted/40 p-4 sm:flex-row sm:items-center sm:justify-between">
       <div>
@@ -35,7 +36,7 @@ export function TimerDisplay({
           {formatDuration(elapsedSeconds)}
         </p>
       </div>
-      <Button onClick={onToggle} disabled={isToggling} size="lg">
+      <Button onClick={onToggle} variant={buttonVariant} disabled={isToggling}>
         {isRunning ? "Stop" : "Start"}
       </Button>
     </div>
